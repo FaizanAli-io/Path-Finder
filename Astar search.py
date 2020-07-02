@@ -1,7 +1,17 @@
 import pygame, sys
+
+rows = int(input("Please Enter the number of rows:- "))
+columns = int(input("Please Enter the number of columns:- "))
+start = list(map(lambda x: int(x)-1, input("Please enter the starting points' coordinates (x, y):- ").split(',')))
+goal = list(map(lambda x: int(x)-1, input("Please enter the starting points' coordinates (x, y):- ").split(',')))
+dimen = max([rows, columns])
+size = 600 // dimen
+Astar = True
+
+
 pygame.init()
 black, white, red, green, blue, pink = (0, 0, 0), (255, 255, 255), (255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 8, 127)
-scW, scH = 960, 640
+scW, scH = 1280, 720
 screen = pygame.display.set_mode((scW, scH))
 pygame.display.set_caption("Path Finder")
 pygame.mouse.set_cursor(*pygame.cursors.diamond)
@@ -72,10 +82,7 @@ class Grid:
             path_length += 1
 
 solved, start_solve = False, False
-Astar = True
-rows, columns = 50, 50
-start, goal = (0, 0), (20, 20)
-mygrid = Grid(rows, columns, blocksize=10)
+mygrid = Grid(rows, columns, size)
 startbox, goalbox = mygrid.boxes[start[0]][start[1]], mygrid.boxes[goal[0]][goal[1]]
 startbox.placeholder = goalbox.placeholder = True
 openSet, closedSet = [startbox], []
@@ -83,6 +90,9 @@ openSet, closedSet = [startbox], []
 def solve(hueristic):
     global solved
     if hueristic:
+        if not openSet:
+            print("Path not found")
+            return
         lowestIndex = 0
         for i in range(len(openSet)):
             if openSet[i].cost < openSet[lowestIndex].cost:
@@ -95,6 +105,7 @@ def solve(hueristic):
         if current == goalbox:
             mygrid.make_path(current)
             solved = True
+            return
         else:
             for child in current.children:
                 if child not in closedSet and child not in openSet:
@@ -104,6 +115,9 @@ def solve(hueristic):
                     openSet.append(child)
             closedSet.append(current)
     else:
+        if not openSet:
+            print("Path not found")
+            return
         current = openSet.pop(0)
         current.open = False
         current.closed = True
@@ -111,6 +125,7 @@ def solve(hueristic):
         if current == goalbox:
             mygrid.make_path(current)
             solved = True
+            return
         else:
             for child in current.children:
                 if child not in closedSet and child not in openSet:
