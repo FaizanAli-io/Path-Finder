@@ -1,13 +1,49 @@
 import pygame, sys
+from tkinter import *
+from tkinter.ttk import Combobox
 
-rows = int(input("Please Enter the number of rows:- "))
-columns = int(input("Please Enter the number of columns:- "))
-start = list(map(lambda x: int(x)-1, input("Please enter the starting points' coordinates (x, y):- ").split(',')))
-goal = list(map(lambda x: int(x)-1, input("Please enter the starting points' coordinates (x, y):- ").split(',')))
+screen = Tk()
+screen.geometry('280x260')
+screen.title("PathFinder")
+
+def get_form_info():
+    global rows, columns, startx, starty, endx, endy, start, goal, Astar
+    try:
+        rows = int(rows.get())
+        columns = int(columns.get())
+        start = (int(startx.get())-1, int(starty.get())-1)
+        goal = (int(endx.get())-1, int(endy.get())-1)
+        if combo.get()[0] == 'A': Astar = True
+        else: Astar = False
+    except:
+        print("Error")
+    screen.destroy()
+
+Label(screen, text="Path Finding Algorithm Visualizer", width="300", height='3', font='comicsans').pack()
+Label(screen, text='Size of the grid        Rows:').place(x=10, y=60)
+Label(screen, text='Cols:').place(x=180, y=60)
+Label(screen, text='Starting Coordinates     X:').place(x=10, y=100)
+Label(screen, text='Y:').place(x=195, y=100)
+Label(screen, text='Ending Coordinates       X:').place(x=10, y=140)
+Label(screen, text='Y:').place(x=195, y=140)
+Label(screen, text='Algorithm: ').place(x=10, y=180)
+
+rows, columns, startx, starty, endx, endy = StringVar(), StringVar(), StringVar(), StringVar(), StringVar(), StringVar()
+Entry(screen, textvariable=rows).place(x=150, y=62, width='30')
+Entry(screen, textvariable=columns).place(x=210, y=62, width='30')
+Entry(screen, textvariable=startx).place(x=150, y=102, width='30')
+Entry(screen, textvariable=starty).place(x=210, y=102, width='30')
+Entry(screen, textvariable=endx).place(x=150, y=142, width='30')
+Entry(screen, textvariable=endy).place(x=210, y=142, width='30')
+combo = Combobox(screen, width=20, values=['A* Algorithm', 'Dijkstras\'  Algorithm'])
+combo.place(x=80, y=182)
+Button(screen, text='Generate Maze', bg="grey", width='20', height='2', command=get_form_info).place(x=60, y=210)
+
+screen.mainloop()
+
+#rows, columns, start, goal, Astar = 30, 30, (0, 0), (25, 25), True #debugging
 dimen = max([rows, columns])
 size = 600 // dimen
-Astar = True
-
 
 pygame.init()
 black, white, red, green, blue, pink = (0, 0, 0), (255, 255, 255), (255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 8, 127)
@@ -24,7 +60,7 @@ class Box:
         self.position = pygame.Rect(buffX+(self.j*(blocksize+(blocksize*0.2))), buffY+(self.i*(blocksize+(blocksize*0.2))), blocksize, blocksize)
         self.wall, self.open, self.closed, self.path = False, False, False, False
         self.prev = None
-        self.cost = 0
+        self.cost, self.g, self.h = 0, 0, 0
         self.children = []
         self.placeholder = False
 
@@ -51,13 +87,8 @@ class Box:
         h = abs(goal[0] - self.i) + abs(goal[1] - self.j)
         g = abs(start[0] - self.i) + abs(start[1] - self.j)
         self.cost = h + g
-
-    def blit_text(self, text, color):
-        font = pygame.font.SysFont('comicsans', self.position[2]//3, italic=5, bold=5)
-        text = font.render(text, True, color)
-        center = (self.position[0]+(self.position[2]//2), self.position[1]+(self.position[3]//2))
-        textRect = text.get_rect(center=center)
-        screen.blit(text, textRect)
+        self.g = g
+        self.h = h
 
 class Grid:
     def __init__(self, rows, columns, blocksize=50):
@@ -66,6 +97,7 @@ class Grid:
 
     def show(self):
         [[box.show() for box in line] for line in self.boxes]
+        #self.show_costs() #use this to see the costs the algorithm assigns
 
     def waller(self, pos):
         for i in range(len(self.boxes)):
@@ -75,11 +107,25 @@ class Grid:
                         self.boxes[i][j].wall = not self.boxes[i][j].wall
 
     def make_path(self, box):
-        path_length = 0
+        self.path_length = 0
         while box:
             box.path, box.closed = True, False
             box = box.prev
-            path_length += 1
+            self.path_length += 1
+        self.pop_up()
+    
+    def pop_up(self):
+        global solved
+        screen = Tk()
+        screen.geometry('300x80')
+        if solved:
+            screen.title('Path Found')
+            Label(screen, text=f"The Algorithm found a path between the two Nodes.\nThe shortest distance is {self.path_length} blocks", width="300", height='3', font='comicsans', wraplength='300').pack()
+        else:
+            screen.title('Path Not Found')
+            Label(screen, text="The Algorithm could not find a path between the two Nodes", width="300", height='3', font='comicsans', wraplength='300').pack()
+        solved = True
+        screen.mainloop()
 
 solved, start_solve = False, False
 mygrid = Grid(rows, columns, size)
@@ -91,20 +137,17 @@ def solve(hueristic):
     global solved
     if hueristic:
         if not openSet:
-            print("Path not found")
+            mygrid.pop_up()
             return
-        lowestIndex = 0
-        for i in range(len(openSet)):
-            if openSet[i].cost < openSet[lowestIndex].cost:
-                lowestIndex = i
-        
+
+        lowestIndex = openSet.index(min(openSet, key=lambda x: x.h))    
         current = openSet.pop(lowestIndex)
         current.open = False
         current.closed = True
         
         if current == goalbox:
-            mygrid.make_path(current)
             solved = True
+            mygrid.make_path(current)
             return
         else:
             for child in current.children:
@@ -116,15 +159,15 @@ def solve(hueristic):
             closedSet.append(current)
     else:
         if not openSet:
-            print("Path not found")
+            mygrid.pop_up()
             return
         current = openSet.pop(0)
         current.open = False
         current.closed = True
         
         if current == goalbox:
-            mygrid.make_path(current)
             solved = True
+            mygrid.make_path(current)
             return
         else:
             for child in current.children:
