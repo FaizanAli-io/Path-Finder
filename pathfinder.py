@@ -245,4 +245,4 @@ while True:
     mygrid.show()
 
     pygame.display.flip()
-    clock.tick(100)
+    clock.tick(20)
